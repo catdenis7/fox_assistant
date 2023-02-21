@@ -2,7 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:geocoding/geocoding.dart';
+import 'package:geocode/geocode.dart';
+//import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
 void main() {
@@ -34,20 +35,29 @@ class _MyHomePageState extends State<MyHomePage> {
   var _altitude = "";
   var _speed = "";
   String currentAddress = 'My Address';
-  //Position currentPosition;
+
+  Future<String> _getAddress(double? lat, double? lang) async {
+    if (lat == null || lang == null) return "";
+    GeoCode geoCode = GeoCode();
+    Address address =
+        await geoCode.reverseGeocoding(latitude: lat, longitude: lang);
+    return "${address.streetAddress}, ${address.city}, ${address.countryName}, ${address.postal}";
+  }
 
   Future<void> _updatePosition() async {
     Position position = await _determinePosition();
-    List<Placemark> placemarks =
-        await placemarkFromCoordinates(position.latitude, position.longitude);
-    Placemark place = placemarks[0];
+    //List<Placemark> placemarks =
+    //  await placemarkFromCoordinates(position.latitude, position.longitude);
+    //Placemark place = placemarks[0];
+    String place = await _getAddress(position.latitude, position.longitude);
     setState(() {
       _latitude = position.latitude.toString();
       _longitude = position.longitude.toString();
       _altitude = position.altitude.toString();
       _speed = position.speed.toString();
-      currentAddress =
-          "${place.locality}, ${place.postalCode}, ${place.country}, ${place.administrativeArea}, ${place.isoCountryCode}, ${place.name}, ${place.street}, ${place.subAdministrativeArea},${place.subLocality}, ${place.subThoroughfare}, ${place.thoroughfare}";
+      currentAddress = place;
+      //place.toString();
+      // "${place.locality}, ${place.postalCode}, ${place.country}, ${place.administrativeArea}, ${place.isoCountryCode}, ${place.name}, ${place.street}, ${place.subAdministrativeArea},${place.subLocality}, ${place.subThoroughfare}, ${place.thoroughfare}";
     });
   }
 
