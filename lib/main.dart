@@ -5,10 +5,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geocode/geocode.dart';
-//import 'package:geocoding/geocoding.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:alan_voice/alan_voice.dart';
 import 'package:shake/shake.dart';
+import 'package:battery_plus/battery_plus.dart';
+import 'package:flutter_sms/flutter_sms.dart';
 
 void main() {
   runApp(const MyApp());
@@ -39,6 +41,7 @@ class _MyHomePageState extends State<MyHomePage> {
   var _altitude = "";
   var _speed = "";
   String currentAddress = 'My Address';
+  int batteryLevel = 0;
 
   ShakeDetector detector = ShakeDetector.autoStart(onPhoneShake: () async {
     // Do stuff on phone shake
@@ -49,23 +52,13 @@ class _MyHomePageState extends State<MyHomePage> {
   });
 
   _MyHomePageState() {
+    ///////////////////////////////////////////////////////////////////////////
     /// Init Alan Button with project key from Alan Studio
     AlanVoice.addButton(
-        "beb2b72d4d3b2be88f8ed8be0af7fc9a2e956eca572e1d8b807a3e2338fdd0dc/stage",
+        "e32dc67e90eccbbff45b869fc6dda05a2e956eca572e1d8b807a3e2338fdd0dc/stage",
         buttonAlign: AlanVoice.BUTTON_ALIGN_LEFT);
 
-    /// Handle commands from Alan Studio
     AlanVoice.onCommand.add((command) => _handleCommand(command.data));
-    //    {
-    //  debugPrint("got new command ${command.toString()}");
-    //});
-  }
-
-  void _activateAlanVoice() async {
-    var isActive = await AlanVoice.isActive();
-    if (!isActive) {
-      AlanVoice.activate();
-    }
   }
 
   Future<void> _handleCommand(Map<String, dynamic> command) async {
@@ -75,10 +68,24 @@ class _MyHomePageState extends State<MyHomePage> {
         await _updatePosition();
         AlanVoice.playText(currentAddress);
         break;
-      //case "whatsapp":
-      //_sendLocationToWhatsapp();
+      case "battery":
+        batteryLevel = await _batteryState();
+        _activateAlanVoice();
+        AlanVoice.playText("Battery Charge $batteryLevel %");
+        break;
+      case "SMS":
+        _updatePosition();
+        _sendSMSMessage();
+        break;
       default:
         debugPrint("Unknow command");
+    }
+  }
+
+  void _activateAlanVoice() async {
+    var isActive = await AlanVoice.isActive();
+    if (!isActive) {
+      AlanVoice.activate();
     }
   }
 
@@ -86,6 +93,21 @@ class _MyHomePageState extends State<MyHomePage> {
     _activateAlanVoice();
     var params = jsonEncode({"location": currentAddress});
     AlanVoice.callProjectApi("script::getLocation", params);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  /// Tasks
+
+  Future<int> _batteryState() async {
+    var battery = Battery();
+    return await battery.batteryLevel;
+  }
+
+  void _sendSMSMessage() async {
+    String message =
+        "Hola! Te envio mi ubicación actual desde Fox https://www.google.com/maps/search/?api=1&query=$_latitude,$_longitude";
+    List<String> recipents = ["59179622085"];
+    await sendSMS(message: message, recipients: recipents);
   }
 
   Future<String> _getAddress(double? lat, double? lang) async {
@@ -98,20 +120,20 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _updatePosition() async {
     Position position = await _determinePosition();
-    //List<Placemark> placemarks =
-    //  await placemarkFromCoordinates(position.latitude, position.longitude);
-    //Placemark place = placemarks[0];
-    String place =
-        "Avenida Colonel Maximiliano España, Santa Cruz de la Sierra, Bolivia, 6495";
+    // With Geocoding
+    List<Placemark> placemarks =
+        await placemarkFromCoordinates(position.latitude, position.longitude);
+    Placemark place = placemarks[0];
+    //String place =
+    //    "Avenida Colonel Maximiliano España, Santa Cruz de la Sierra, Bolivia, 6495";
     //await _getAddress(position.latitude, position.longitude);
     setState(() {
       _latitude = position.latitude.toString();
       _longitude = position.longitude.toString();
       _altitude = position.altitude.toString();
       _speed = position.speed.toString();
-      currentAddress = place;
-      //place.toString();
-      // "${place.locality}, ${place.postalCode}, ${place.country}, ${place.administrativeArea}, ${place.isoCountryCode}, ${place.name}, ${place.street}, ${place.subAdministrativeArea},${place.subLocality}, ${place.subThoroughfare}, ${place.thoroughfare}";
+      currentAddress = //place;
+          "${place.name}, ${place.street},${place.subLocality},${place.locality}, ${place.country}";
     });
   }
 
@@ -141,7 +163,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('FOX ASSISTANT')),
+      appBar: AppBar(title: const Text('FOX Assistant')),
       body: Center(
         child: Column(
           children: [
@@ -151,12 +173,6 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Text('Latitude = $_latitude'),
             Text('Longitude = $_longitude'),
-            TextButton(
-                onPressed: () async {
-                  await _updatePosition();
-                  sendData();
-                },
-                child: const Text('Locate Me')),
           ],
         ),
       ),
