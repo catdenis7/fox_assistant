@@ -8,6 +8,7 @@ import 'package:geocode/geocode.dart';
 //import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:alan_voice/alan_voice.dart';
+import 'package:shake/shake.dart';
 
 void main() {
   runApp(const MyApp());
@@ -39,6 +40,14 @@ class _MyHomePageState extends State<MyHomePage> {
   var _speed = "";
   String currentAddress = 'My Address';
 
+  ShakeDetector detector = ShakeDetector.autoStart(onPhoneShake: () async {
+    // Do stuff on phone shake
+    var isActive = await AlanVoice.isActive();
+    if (!isActive) {
+      AlanVoice.activate();
+    }
+  });
+
   _MyHomePageState() {
     /// Init Alan Button with project key from Alan Studio
     AlanVoice.addButton(
@@ -52,6 +61,13 @@ class _MyHomePageState extends State<MyHomePage> {
     //});
   }
 
+  void _activateAlanVoice() async {
+    var isActive = await AlanVoice.isActive();
+    if (!isActive) {
+      AlanVoice.activate();
+    }
+  }
+
   Future<void> _handleCommand(Map<String, dynamic> command) async {
     switch (command['comand']) {
       case "location":
@@ -59,15 +75,10 @@ class _MyHomePageState extends State<MyHomePage> {
         await _updatePosition();
         AlanVoice.playText(currentAddress);
         break;
+      //case "whatsapp":
+      //_sendLocationToWhatsapp();
       default:
         debugPrint("Unknow command");
-    }
-  }
-
-  void _activateAlanVoice() async {
-    var isActive = await AlanVoice.isActive();
-    if (!isActive) {
-      AlanVoice.activate();
     }
   }
 

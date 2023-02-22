@@ -36,6 +36,7 @@ dependencies:
   fluttertoast:
   geocode: 1.0.1
   alan_voice: 3.0.0
+  shake: ^2.2.0
 
 
   # The following adds the Cupertino Icons font to your application.
