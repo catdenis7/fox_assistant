@@ -1,10 +1,13 @@
 // ignore_for_file: library_private_types_in_public_api
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geocode/geocode.dart';
 //import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:alan_voice/alan_voice.dart';
 
 void main() {
   runApp(const MyApp());
@@ -36,6 +39,44 @@ class _MyHomePageState extends State<MyHomePage> {
   var _speed = "";
   String currentAddress = 'My Address';
 
+  _MyHomePageState() {
+    /// Init Alan Button with project key from Alan Studio
+    AlanVoice.addButton(
+        "beb2b72d4d3b2be88f8ed8be0af7fc9a2e956eca572e1d8b807a3e2338fdd0dc/stage",
+        buttonAlign: AlanVoice.BUTTON_ALIGN_LEFT);
+
+    /// Handle commands from Alan Studio
+    AlanVoice.onCommand.add((command) => _handleCommand(command.data));
+    //    {
+    //  debugPrint("got new command ${command.toString()}");
+    //});
+  }
+
+  Future<void> _handleCommand(Map<String, dynamic> command) async {
+    switch (command['comand']) {
+      case "location":
+        _activateAlanVoice();
+        await _updatePosition();
+        AlanVoice.playText(currentAddress);
+        break;
+      default:
+        debugPrint("Unknow command");
+    }
+  }
+
+  void _activateAlanVoice() async {
+    var isActive = await AlanVoice.isActive();
+    if (!isActive) {
+      AlanVoice.activate();
+    }
+  }
+
+  void sendData() async {
+    _activateAlanVoice();
+    var params = jsonEncode({"location": currentAddress});
+    AlanVoice.callProjectApi("script::getLocation", params);
+  }
+
   Future<String> _getAddress(double? lat, double? lang) async {
     if (lat == null || lang == null) return "";
     GeoCode geoCode = GeoCode();
@@ -49,7 +90,9 @@ class _MyHomePageState extends State<MyHomePage> {
     //List<Placemark> placemarks =
     //  await placemarkFromCoordinates(position.latitude, position.longitude);
     //Placemark place = placemarks[0];
-    String place = await _getAddress(position.latitude, position.longitude);
+    String place =
+        "Avenida Colonel Maximiliano España, Santa Cruz de la Sierra, Bolivia, 6495";
+    //await _getAddress(position.latitude, position.longitude);
     setState(() {
       _latitude = position.latitude.toString();
       _longitude = position.longitude.toString();
@@ -98,8 +141,9 @@ class _MyHomePageState extends State<MyHomePage> {
             Text('Latitude = $_latitude'),
             Text('Longitude = $_longitude'),
             TextButton(
-                onPressed: () {
-                  _updatePosition();
+                onPressed: () async {
+                  await _updatePosition();
+                  sendData();
                 },
                 child: const Text('Locate Me')),
           ],
